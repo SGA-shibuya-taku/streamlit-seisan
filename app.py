@@ -6,7 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 # Google Sheets API認証
 def authenticate_google_sheets():
-    google_credentials = st.secrets["google_credentials"]
+    google_credentials = st.secrets["GOOGLE_CREDENTIALS"]
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive",
