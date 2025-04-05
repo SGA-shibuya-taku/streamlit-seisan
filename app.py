@@ -54,38 +54,41 @@ try:
 except Exception:
     data = pd.DataFrame(columns=["Person", "Date", "Amount"])
 
+name1 = st.secrets.NAME1
+name2 = st.secrets.NAME2
+
 
 # 入力フォーム
 st.header("支出の記録")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("たく")
-    person_1_date = st.date_input("日付（たく）")
-    person_1_amount = st.number_input("金額（たく）", min_value=0, step=100)
-    if st.button("追加（たく）"):
+    st.subheader(name1)
+    person_1_date = st.date_input(f"日付（{name1}）")
+    person_1_amount = st.number_input(f"金額（{name1}）", min_value=0, step=100)
+    if st.button(f"追加（{name1}）"):
         new_row = {
-            "Person": "たく",
+            "Person": name1,
             "Date": str(person_1_date),
             "Amount": person_1_amount,
         }
         data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
         save_data(sheet, data)
-        st.success("たく の支出が追加されました！")
+        st.success(f"{name1} の支出が追加されました！")
 
 with col2:
-    st.subheader("めい")
-    person_2_date = st.date_input("日付（めい）")
-    person_2_amount = st.number_input("金額（めい）", min_value=0, step=100)
-    if st.button("追加（めい）"):
+    st.subheader(name2)
+    person_2_date = st.date_input(f"日付（{name2}）")
+    person_2_amount = st.number_input(f"金額（{name2}）", min_value=0, step=100)
+    if st.button(f"追加（{name2}）"):
         new_row = {
-            "Person": "めい",
+            "Person": name2,
             "Date": str(person_2_date),
             "Amount": person_2_amount,
         }
         data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
         save_data(sheet, data)
-        st.success("めい の支出が追加されました！")
+        st.success(f"{name2} の支出が追加されました！")
 
 # 表の表示
 st.header("支出一覧")
@@ -95,8 +98,8 @@ st.dataframe(data)
 st.header("精算")
 if st.button("精算する"):
     # Personごとの合計金額を計算
-    total_person_1 = data[data["Person"] == "たく"]["Amount"].sum()
-    total_person_2 = data[data["Person"] == "めい"]["Amount"].sum()
+    total_person_1 = data[data["Person"] == name1]["Amount"].sum()
+    total_person_2 = data[data["Person"] == name2]["Amount"].sum()
 
     # 精算計算
     total_spent = total_person_1 + total_person_2
@@ -104,12 +107,12 @@ if st.button("精算する"):
     difference = total_person_1 - total_person_2
 
     if difference > 0:
-        payer = "めい"
-        payee = "たく"
+        payer = name2
+        payee = name1
         amount_to_pay = abs(difference) / 2
     elif difference < 0:
-        payer = "たく"
-        payee = "めい"
+        payer = name1
+        payee = name2
         amount_to_pay = abs(difference) / 2
     else:
         payer, payee, amount_to_pay = None, None, None
