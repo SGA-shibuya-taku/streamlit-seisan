@@ -33,6 +33,7 @@ def load_data(sheet):
 
 # データフレームをスプレッドシートに保存
 def save_data(sheet, data):
+    # TODO : 精算内容を2シート目に記録
     sheet.clear()  # シート内容をクリア
     sheet.update(
         [data.columns.values.tolist()] + data.values.tolist()
@@ -52,7 +53,7 @@ sheet = get_google_sheet(SHEET_NAME)
 try:
     data = load_data(sheet)
 except Exception:
-    data = pd.DataFrame(columns=["Person", "Date", "Amount"])
+    data = pd.DataFrame(columns=["Person", "Date", "Amount", "Content", "Place"])
 
 name1 = st.secrets.NAME1
 name2 = st.secrets.NAME2
@@ -66,11 +67,16 @@ with col1:
     st.subheader(name1)
     person_1_date = st.date_input(f"日付（{name1}）")
     person_1_amount = st.number_input(f"金額（{name1}）", min_value=0, step=100)
+    sub_col1, sub_col2 = col1.columns(2)
+    person_1_content = sub_col1.radio(f"分類({name1})", ["食費", "その他"])
+    person_1_place = sub_col2.text_input(f"場所({name1})")
     if st.button(f"追加（{name1}）"):
         new_row = {
             "Person": name1,
             "Date": str(person_1_date),
             "Amount": person_1_amount,
+            "Content": person_1_content,
+            "Place": person_1_place
         }
         data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
         save_data(sheet, data)
@@ -80,11 +86,16 @@ with col2:
     st.subheader(name2)
     person_2_date = st.date_input(f"日付（{name2}）")
     person_2_amount = st.number_input(f"金額（{name2}）", min_value=0, step=100)
+    sub_col1, sub_col2 = col2.columns(2)
+    person_2_content = sub_col1.radio(f"分類({name2})", ["食費", "その他"])
+    person_2_place = sub_col2.text_input(f"場所({name2})")
     if st.button(f"追加（{name2}）"):
         new_row = {
             "Person": name2,
             "Date": str(person_2_date),
             "Amount": person_2_amount,
+            "Content": person_2_content,
+            "Place": person_2_place,
         }
         data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
         save_data(sheet, data)
@@ -124,6 +135,6 @@ if st.button("精算する"):
         st.write("精算する必要はありません。")
 
     # データクリア
-    data = pd.DataFrame(columns=["Person", "Date", "Amount"])
+    data = pd.DataFrame(columns=["Person", "Date", "Amount", "Content", "place"])
     save_data(sheet, data)
     st.success("精算が完了しました！表の内容はクリアされました。")
