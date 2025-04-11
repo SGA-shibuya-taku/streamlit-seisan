@@ -1,8 +1,22 @@
 import datetime
+import random
+import requests
 import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
+
+def get_pokemon(id):
+    url = f"https://pokeapi.co/api/v2/pokemon/{id}"
+    response = requests.get(url)
+    data = response.json()
+    pokemon = {}
+    response_sp = requests.get(data["species"]["url"])
+    pokemon["name"] = response_sp.json()["names"][0]["name"]
+    pokemon["image"] = data["sprites"]["other"]["showdown"]["front_default"]
+
+    return pokemon
 
 
 # Google Sheets API認証
@@ -175,3 +189,8 @@ with tabs[0]:
 with tabs[1]:
     data_histry = load_data(history_sheet)
     st.write(data_histry)
+
+    pokemon_id = random.randrange(800)
+    pokemon = get_pokemon(pokemon_id)
+    # st.write(f"No.{pokemon_id} " + pokemon["name"])
+    st.image(pokemon["image"])
