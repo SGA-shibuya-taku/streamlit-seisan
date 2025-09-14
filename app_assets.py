@@ -3,17 +3,116 @@ import streamlit as st
 import pandas as pd
 import gspread
 import plotly.graph_objects as go
+# import hashlib
+import time
 from oauth2client.service_account import ServiceAccountCredentials
+
+
+# 認証設定
+AUTH_CONFIG = st.secrets["AUTH"]
+PIN_CODE = AUTH_CONFIG["PIN_CODE"]
+SESSION_TIMEOUT_MINUTES = AUTH_CONFIG.get("SESSION_TIMEOUT_MINUTES", 30)
+
+
+# 認証関数
+def check_authentication():
+    """認証チェック関数"""
+    # セッション状態の初期化
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+        st.session_state.auth_time = None
+    
+    # セッションタイムアウトチェック
+    if st.session_state.authenticated and st.session_state.auth_time:
+        elapsed_minutes = (time.time() - st.session_state.auth_time) / 60
+        if elapsed_minutes > SESSION_TIMEOUT_MINUTES:
+            st.session_state.authenticated = False
+            st.session_state.auth_time = None
+            st.warning(f"セッションがタイムアウトしました（{SESSION_TIMEOUT_MINUTES}分）")
+    
+    return st.session_state.authenticated
+
+
+def show_login_form():
+    """ログイン画面表示"""
+    st.title("資産管理アプリ")
+    st.markdown("---")
+    
+    # PINコード認証のみ
+    st.subheader("PINを入力")
+    pin_input = st.text_input(
+        "暗証番号",
+        type="password",
+        placeholder="PINを入力"
+    )
+    
+    if st.button("ログイン", type="primary"):
+        if pin_input == PIN_CODE:
+            st.session_state.authenticated = True
+            st.session_state.auth_time = time.time()
+            st.success("認証成功！")
+            st.rerun()
+        else:
+            st.error("暗証番号が間違っています")
+    
+    # パスフレーズ認証（参考用にコメントアウト）
+    # # 認証方法選択
+    # auth_method = st.radio(
+    #     "認証方法を選択してください：",
+    #     ["4桁暗証番号", "パスフレーズ（推奨）"],
+    #     help="パスフレーズの方がより安全です"
+    # )
+    # 
+    # if auth_method == "4桁暗証番号":
+    #     st.subheader("4桁暗証番号を入力")
+    #     pin_input = st.text_input(
+    #         "暗証番号",
+    #         type="password",
+    #         max_chars=4,
+    #         placeholder="4桁の数字を入力"
+    #     )
+    #     
+    #     if st.button("ログイン", type="primary"):
+    #         if pin_input == PIN_CODE:
+    #             st.session_state.authenticated = True
+    #             st.session_state.auth_time = time.time()
+    #             st.success("認証成功！")
+    #             st.rerun()
+    #         else:
+    #             st.error("暗証番号が間違っています")
+    #             
+    # else:  # パスフレーズ
+    #     st.subheader("パスフレーズを入力")
+    #     st.info("💡 パスフレーズは文字数が多く、より安全です")
+    #     
+    #     passphrase_input = st.text_input(
+    #         "パスフレーズ",
+    #         type="password",
+    #         placeholder="設定したパスフレーズを入力"
+    #     )
+    #     
+    #     if st.button("ログイン", type="primary"):
+    #         # パスフレーズをハッシュ化して比較
+    #         input_hash = hashlib.sha256(passphrase_input.encode()).hexdigest()
+    #         stored_hash = AUTH_CONFIG.get("PASSPHRASE_HASH", "")
+    #         
+    #         if input_hash == stored_hash:
+    #             st.session_state.authenticated = True
+    #             st.session_state.auth_time = time.time()
+    #             st.success("認証成功！")
+    #             st.rerun()
+    #         else:
+    #             st.error("パスフレーズが間違っています")
 
 
 # 項目名設定を読み込み
 ASSET_CATEGORIES = st.secrets["ASSET_CATEGORIES"]
-ITEM_A = ASSET_CATEGORIES["ITEM_A"]  # 投資信託
-ITEM_B = ASSET_CATEGORIES["ITEM_B"]  # 個別株
-ITEM_C = ASSET_CATEGORIES["ITEM_C"]  # 米国株
-ITEM_D = ASSET_CATEGORIES["ITEM_D"]  # Folio
-ITEM_E = ASSET_CATEGORIES["ITEM_E"]  # PayPay運用
-ITEM_F = ASSET_CATEGORIES["ITEM_F"]  # JREバンク
+ITEM_A = ASSET_CATEGORIES["ITEM_A"]
+ITEM_B = ASSET_CATEGORIES["ITEM_B"]
+ITEM_C = ASSET_CATEGORIES["ITEM_C"]
+ITEM_D = ASSET_CATEGORIES["ITEM_D"]
+ITEM_E = ASSET_CATEGORIES["ITEM_E"]
+ITEM_F = ASSET_CATEGORIES["ITEM_F"]
 
 
 # Google Sheets API認証
@@ -158,6 +257,12 @@ def add_new_data(sheet, new_data):
     ]
     sheet.append_row(row_data)
 
+
+# ===== メインアプリケーション =====
+# 認証チェック
+if not check_authentication():
+    show_login_form()
+    st.stop()
 
 # アプリのタイトル
 st.title("総資産集計アプリ")
