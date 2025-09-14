@@ -31,7 +31,8 @@ def get_google_sheet(sheet_name):
         # スプレッドシートが存在しない場合は新規作成
         sheet = client.create(sheet_name).sheet1
         # ヘッダーを設定
-        headers = ["日付", "投資信託", "個別株", "米国株", "Folio", "JREバンク", "合計", "増減"]
+        headers = ["日付", "投資信託", "個別株", "米国株", "Folio",
+                   "PayPay運用", "JREバンク", "合計", "増減"]
         sheet.append_row(headers)
         return sheet
 
@@ -42,12 +43,12 @@ def load_data(sheet):
         records = sheet.get_all_records()
         if not records:
             columns = ["日付", "投資信託", "個別株", "米国株", "Folio",
-                       "JREバンク", "合計", "増減"]
+                       "PayPay運用", "JREバンク", "合計", "増減"]
             return pd.DataFrame(columns=columns)
         return pd.DataFrame(records)
     except Exception:
         columns = ["日付", "投資信託", "個別株", "米国株", "Folio",
-                   "JREバンク", "合計", "増減"]
+                   "PayPay運用", "JREバンク", "合計", "増減"]
         return pd.DataFrame(columns=columns)
 
 
@@ -108,7 +109,8 @@ def filter_data_by_period(data, period):
 # 前日のデータを取得
 def get_previous_day_data(data):
     if data.empty:
-        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0, "JREバンク": 0}
+        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0,
+                "PayPay運用": 0, "JREバンク": 0}
     
     # 日付列をdatetimeに変換してソート
     data_copy = data.copy()
@@ -122,10 +124,12 @@ def get_previous_day_data(data):
             "個別株": int(latest_row.get("個別株", 0)),
             "米国株": int(latest_row.get("米国株", 0)),
             "Folio": int(latest_row.get("Folio", 0)),
+            "PayPay運用": int(latest_row.get("PayPay運用", 0)),
             "JREバンク": int(latest_row.get("JREバンク", 0))
         }
     else:
-        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0, "JREバンク": 0}
+        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0,
+                "PayPay運用": 0, "JREバンク": 0}
 
 
 # 新しいデータを追加
@@ -137,6 +141,7 @@ def add_new_data(sheet, new_data):
         int(new_data["個別株"]) if new_data["個別株"] != 0 else 0,
         int(new_data["米国株"]) if new_data["米国株"] != 0 else 0,
         int(new_data["Folio"]) if new_data["Folio"] != 0 else 0,
+        int(new_data["PayPay運用"]) if new_data["PayPay運用"] != 0 else 0,
         int(new_data["JREバンク"]) if new_data["JREバンク"] != 0 else 0,
         int(new_data["合計"]) if new_data["合計"] != 0 else 0,
         new_data["増減"]
@@ -204,6 +209,13 @@ with col2:
         value=0,
         help=f"前回の金額: ¥{previous_data['Folio']:,}"
     )
+    paypay_investment = st.number_input(
+        "PayPay運用",
+        min_value=0,
+        step=100,
+        value=0,
+        help=f"前回の金額: ¥{previous_data['PayPay運用']:,}"
+    )
     jre_bank = st.number_input(
         "JREバンク",
         min_value=0,
@@ -221,6 +233,8 @@ if st.button("決定", type="primary", use_container_width=True):
                      else previous_data["個別株"])
     us_st = int(us_stocks if us_stocks > 0 else previous_data["米国株"])
     fol = int(folio if folio > 0 else previous_data["Folio"])
+    paypay = int(paypay_investment if paypay_investment > 0
+                 else previous_data["PayPay運用"])
     jre = int(jre_bank if jre_bank > 0 else previous_data["JREバンク"])
 
     final_data = {
@@ -229,6 +243,7 @@ if st.button("決定", type="primary", use_container_width=True):
         "個別株": ind_stocks,
         "米国株": us_st,
         "Folio": fol,
+        "PayPay運用": paypay,
         "JREバンク": jre
     }
 
@@ -238,6 +253,7 @@ if st.button("決定", type="primary", use_container_width=True):
         final_data["個別株"] +
         final_data["米国株"] +
         final_data["Folio"] +
+        final_data["PayPay運用"] +
         final_data["JREバンク"]
     )
     
@@ -265,43 +281,45 @@ if not data.empty:
     data_display = data.copy()
     data_display["日付"] = pd.to_datetime(data_display["日付"])
     data_display = data_display.sort_values("日付", ascending=False)
-    
+
     # 数値列をフォーマット（増減列は文字列なので除外）
-    numeric_columns = ["投資信託", "個別株", "米国株", "Folio", "JREバンク", "合計"]
+    numeric_columns = ["投資信託", "個別株", "米国株", "Folio", "PayPay運用",
+                       "JREバンク", "合計"]
     for col in numeric_columns:
         if col in data_display.columns:
             data_display[col] = data_display[col].apply(
                 lambda x: f"¥{x:,}" if pd.notnull(x) else "¥0"
             )
-    
+
     # 日付を文字列形式に戻す
     data_display["日付"] = data_display["日付"].dt.strftime("%Y-%m-%d")
-    
+
     st.dataframe(data_display, use_container_width=True)
-    
+
     # グラフ表示
     st.header("資産推移グラフ")
-    
+
     # 期間選択
     period_options = ["1ヶ月", "半年", "1年", "全期間"]
     selected_period = st.selectbox("表示期間を選択", period_options, index=3)
-    
+
     # データをフィルタリング
     filtered_data = filter_data_by_period(data, selected_period)
-    
+
     if not filtered_data.empty:
         # 日付順にソート
         chart_data = filtered_data.sort_values("日付")
-        
+
         # 積み上げ棒グラフ用のデータ準備
-        asset_columns = ["投資信託", "個別株", "米国株", "Folio", "JREバンク"]
-        
+        asset_columns = ["投資信託", "個別株", "米国株", "Folio", "PayPay運用",
+                         "JREバンク"]
+
         # 日付を文字列に変換
         chart_data["日付_str"] = chart_data["日付"].dt.strftime("%Y-%m-%d")
-        
+
         # 積み上げ棒グラフのコード（参考用にコメントアウト）
         # fig = go.Figure()
-        # 
+        #
         # colors = {
         #     "投資信託": "#FF6B6B",
         #     "個別株": "#4ECDC4",
@@ -309,7 +327,7 @@ if not data.empty:
         #     "Folio": "#96CEB4",
         #     "JREバンク": "#FECA57"
         # }
-        # 
+        #
         # for column in asset_columns:
         #     if column in chart_data.columns:
         #         fig.add_trace(go.Bar(
@@ -318,7 +336,7 @@ if not data.empty:
         #             y=chart_data[column],
         #             marker_color=colors.get(column, "#95A5A6")
         #         ))
-        # 
+        #
         # fig.update_layout(
         #     barmode='stack',
         #     title=f"資産推移 ({selected_period})",
@@ -334,24 +352,25 @@ if not data.empty:
         #     ),
         #     height=500
         # )
-        # 
+        #
         # st.plotly_chart(fig, use_container_width=True)
-        
+
         # カラーパレット定義
         colors = {
             "投資信託": "#202A84",
             "個別株": "#4ECDC4",
             "米国株": "#9327D1",
             "Folio": "#FD7171",
-            "JREバンク": "#09B615"
+            "PayPay運用": "#FA0000",
+            "JREバンク": "#09B615",
         }
-        
+
         # エリアグラフ（面積折れ線グラフ）
         st.subheader("資産推移グラフ")
-        
+
         # エリアグラフの作成
         fig_area = go.Figure()
-        
+
         # 各カテゴリのエリアを追加（積み上げ形式）
         for column in asset_columns:
             if column in chart_data.columns:
@@ -367,7 +386,7 @@ if not data.empty:
                                   '日付: %{x}<br>' +
                                   '金額: ¥%{y:,}<extra></extra>'
                 ))
-        
+
         fig_area.update_layout(
             title=f"カテゴリ別資産推移 ({selected_period})",
             xaxis_title="日付",
@@ -383,7 +402,7 @@ if not data.empty:
             height=500,
             hovermode='x unified'
         )
-        
+
         st.plotly_chart(fig_area, use_container_width=True)
     else:
         st.info(f"選択した期間（{selected_period}）にデータがありません。")
