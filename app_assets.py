@@ -6,6 +6,16 @@ import plotly.graph_objects as go
 from oauth2client.service_account import ServiceAccountCredentials
 
 
+# 項目名設定を読み込み
+ASSET_CATEGORIES = st.secrets["ASSET_CATEGORIES"]
+ITEM_A = ASSET_CATEGORIES["ITEM_A"]  # 投資信託
+ITEM_B = ASSET_CATEGORIES["ITEM_B"]  # 個別株
+ITEM_C = ASSET_CATEGORIES["ITEM_C"]  # 米国株
+ITEM_D = ASSET_CATEGORIES["ITEM_D"]  # Folio
+ITEM_E = ASSET_CATEGORIES["ITEM_E"]  # PayPay運用
+ITEM_F = ASSET_CATEGORIES["ITEM_F"]  # JREバンク
+
+
 # Google Sheets API認証
 def authenticate_google_sheets():
     google_credentials = st.secrets["GOOGLE_CREDENTIALS"]
@@ -31,8 +41,8 @@ def get_google_sheet(sheet_name):
         # スプレッドシートが存在しない場合は新規作成
         sheet = client.create(sheet_name).sheet1
         # ヘッダーを設定
-        headers = ["日付", "投資信託", "個別株", "米国株", "Folio",
-                   "PayPay運用", "JREバンク", "合計", "増減"]
+        headers = ["日付", ITEM_A, ITEM_B, ITEM_C, ITEM_D,
+                   ITEM_E, ITEM_F, "合計", "増減"]
         sheet.append_row(headers)
         return sheet
 
@@ -42,13 +52,13 @@ def load_data(sheet):
     try:
         records = sheet.get_all_records()
         if not records:
-            columns = ["日付", "投資信託", "個別株", "米国株", "Folio",
-                       "PayPay運用", "JREバンク", "合計", "増減"]
+            columns = ["日付", ITEM_A, ITEM_B, ITEM_C, ITEM_D,
+                       ITEM_E, ITEM_F, "合計", "増減"]
             return pd.DataFrame(columns=columns)
         return pd.DataFrame(records)
     except Exception:
-        columns = ["日付", "投資信託", "個別株", "米国株", "Folio",
-                   "PayPay運用", "JREバンク", "合計", "増減"]
+        columns = ["日付", ITEM_A, ITEM_B, ITEM_C, ITEM_D,
+                   ITEM_E, ITEM_F, "合計", "増減"]
         return pd.DataFrame(columns=columns)
 
 
@@ -109,8 +119,8 @@ def filter_data_by_period(data, period):
 # 前日のデータを取得
 def get_previous_day_data(data):
     if data.empty:
-        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0,
-                "PayPay運用": 0, "JREバンク": 0}
+        return {ITEM_A: 0, ITEM_B: 0, ITEM_C: 0, ITEM_D: 0,
+                ITEM_E: 0, ITEM_F: 0}
     
     # 日付列をdatetimeに変換してソート
     data_copy = data.copy()
@@ -120,16 +130,16 @@ def get_previous_day_data(data):
     if len(data_sorted) > 0:
         latest_row = data_sorted.iloc[0]
         return {
-            "投資信託": int(latest_row.get("投資信託", 0)),
-            "個別株": int(latest_row.get("個別株", 0)),
-            "米国株": int(latest_row.get("米国株", 0)),
-            "Folio": int(latest_row.get("Folio", 0)),
-            "PayPay運用": int(latest_row.get("PayPay運用", 0)),
-            "JREバンク": int(latest_row.get("JREバンク", 0))
+            ITEM_A: int(latest_row.get(ITEM_A, 0)),
+            ITEM_B: int(latest_row.get(ITEM_B, 0)),
+            ITEM_C: int(latest_row.get(ITEM_C, 0)),
+            ITEM_D: int(latest_row.get(ITEM_D, 0)),
+            ITEM_E: int(latest_row.get(ITEM_E, 0)),
+            ITEM_F: int(latest_row.get(ITEM_F, 0))
         }
     else:
-        return {"投資信託": 0, "個別株": 0, "米国株": 0, "Folio": 0,
-                "PayPay運用": 0, "JREバンク": 0}
+        return {ITEM_A: 0, ITEM_B: 0, ITEM_C: 0, ITEM_D: 0,
+                ITEM_E: 0, ITEM_F: 0}
 
 
 # 新しいデータを追加
@@ -137,12 +147,12 @@ def add_new_data(sheet, new_data):
     # データを行として追加（数値をPythonの標準型に変換）
     row_data = [
         new_data["日付"],
-        int(new_data["投資信託"]) if new_data["投資信託"] != 0 else 0,
-        int(new_data["個別株"]) if new_data["個別株"] != 0 else 0,
-        int(new_data["米国株"]) if new_data["米国株"] != 0 else 0,
-        int(new_data["Folio"]) if new_data["Folio"] != 0 else 0,
-        int(new_data["PayPay運用"]) if new_data["PayPay運用"] != 0 else 0,
-        int(new_data["JREバンク"]) if new_data["JREバンク"] != 0 else 0,
+        int(new_data[ITEM_A]) if new_data[ITEM_A] != 0 else 0,
+        int(new_data[ITEM_B]) if new_data[ITEM_B] != 0 else 0,
+        int(new_data[ITEM_C]) if new_data[ITEM_C] != 0 else 0,
+        int(new_data[ITEM_D]) if new_data[ITEM_D] != 0 else 0,
+        int(new_data[ITEM_E]) if new_data[ITEM_E] != 0 else 0,
+        int(new_data[ITEM_F]) if new_data[ITEM_F] != 0 else 0,
         int(new_data["合計"]) if new_data["合計"] != 0 else 0,
         new_data["増減"]
     ]
@@ -179,82 +189,82 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("投資商品")
     investment_trust = st.number_input(
-        "投資信託",
+        ITEM_A,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['投資信託']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_A]:,}"
     )
     individual_stocks = st.number_input(
-        "個別株",
+        ITEM_B,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['個別株']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_B]:,}"
     )
     us_stocks = st.number_input(
-        "米国株",
+        ITEM_C,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['米国株']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_C]:,}"
     )
 
 with col2:
     st.subheader("その他の資産")
     folio = st.number_input(
-        "Folio",
+        ITEM_D,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['Folio']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_D]:,}"
     )
     paypay_investment = st.number_input(
-        "PayPay運用",
+        ITEM_E,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['PayPay運用']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_E]:,}"
     )
     jre_bank = st.number_input(
-        "JREバンク",
+        ITEM_F,
         min_value=0,
         step=100,
         value=0,
-        help=f"前回の金額: ¥{previous_data['JREバンク']:,}"
+        help=f"前回の金額: ¥{previous_data[ITEM_F]:,}"
     )
 
 # 決定ボタン
 if st.button("決定", type="primary", use_container_width=True):
     # 入力されていない項目は前日の値を使用
     inv_trust = int(investment_trust if investment_trust > 0
-                    else previous_data["投資信託"])
+                    else previous_data[ITEM_A])
     ind_stocks = int(individual_stocks if individual_stocks > 0
-                     else previous_data["個別株"])
-    us_st = int(us_stocks if us_stocks > 0 else previous_data["米国株"])
-    fol = int(folio if folio > 0 else previous_data["Folio"])
+                     else previous_data[ITEM_B])
+    us_st = int(us_stocks if us_stocks > 0 else previous_data[ITEM_C])
+    fol = int(folio if folio > 0 else previous_data[ITEM_D])
     paypay = int(paypay_investment if paypay_investment > 0
-                 else previous_data["PayPay運用"])
-    jre = int(jre_bank if jre_bank > 0 else previous_data["JREバンク"])
+                 else previous_data[ITEM_E])
+    jre = int(jre_bank if jre_bank > 0 else previous_data[ITEM_F])
 
     final_data = {
         "日付": str(today),
-        "投資信託": inv_trust,
-        "個別株": ind_stocks,
-        "米国株": us_st,
-        "Folio": fol,
-        "PayPay運用": paypay,
-        "JREバンク": jre
+        ITEM_A: inv_trust,
+        ITEM_B: ind_stocks,
+        ITEM_C: us_st,
+        ITEM_D: fol,
+        ITEM_E: paypay,
+        ITEM_F: jre
     }
 
     # 合計を計算
     final_data["合計"] = int(
-        final_data["投資信託"] +
-        final_data["個別株"] +
-        final_data["米国株"] +
-        final_data["Folio"] +
-        final_data["PayPay運用"] +
-        final_data["JREバンク"]
+        final_data[ITEM_A] +
+        final_data[ITEM_B] +
+        final_data[ITEM_C] +
+        final_data[ITEM_D] +
+        final_data[ITEM_E] +
+        final_data[ITEM_F]
     )
     
     # 増減率を計算
@@ -283,8 +293,8 @@ if not data.empty:
     data_display = data_display.sort_values("日付", ascending=False)
 
     # 数値列をフォーマット（増減列は文字列なので除外）
-    numeric_columns = ["投資信託", "個別株", "米国株", "Folio", "PayPay運用",
-                       "JREバンク", "合計"]
+    numeric_columns = [ITEM_A, ITEM_B, ITEM_C, ITEM_D, ITEM_E,
+                       ITEM_F, "合計"]
     for col in numeric_columns:
         if col in data_display.columns:
             data_display[col] = data_display[col].apply(
@@ -311,8 +321,8 @@ if not data.empty:
         chart_data = filtered_data.sort_values("日付")
 
         # 積み上げ棒グラフ用のデータ準備
-        asset_columns = ["投資信託", "個別株", "米国株", "Folio", "PayPay運用",
-                         "JREバンク"]
+        asset_columns = [ITEM_A, ITEM_B, ITEM_C, ITEM_D, ITEM_E,
+                         ITEM_F]
 
         # 日付を文字列に変換
         chart_data["日付_str"] = chart_data["日付"].dt.strftime("%Y-%m-%d")
@@ -321,11 +331,12 @@ if not data.empty:
         # fig = go.Figure()
         #
         # colors = {
-        #     "投資信託": "#FF6B6B",
-        #     "個別株": "#4ECDC4",
-        #     "米国株": "#45B7D1",
-        #     "Folio": "#96CEB4",
-        #     "JREバンク": "#FECA57"
+        #     ITEM_A: "#FF6B6B",
+        #     ITEM_B: "#4ECDC4",
+        #     ITEM_C: "#45B7D1",
+        #     ITEM_D: "#96CEB4",
+        #     ITEM_E: "#FFB347",
+        #     ITEM_F: "#FECA57"
         # }
         #
         # for column in asset_columns:
@@ -357,12 +368,12 @@ if not data.empty:
 
         # カラーパレット定義
         colors = {
-            "投資信託": "#202A84",
-            "個別株": "#4ECDC4",
-            "米国株": "#9327D1",
-            "Folio": "#FD7171",
-            "PayPay運用": "#FA0000",
-            "JREバンク": "#09B615",
+            ITEM_A: "#202A84",
+            ITEM_B: "#4ECDC4",
+            ITEM_C: "#9327D1",
+            ITEM_D: "#FD7171",
+            ITEM_E: "#FA0000",
+            ITEM_F: "#09B615",
         }
 
         # エリアグラフ（面積折れ線グラフ）
