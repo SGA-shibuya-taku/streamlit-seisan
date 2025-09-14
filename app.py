@@ -1,11 +1,56 @@
 import datetime
 import random
+import time
 import requests
 import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# 認証設定
+AUTH_CONFIG = st.secrets["AUTH"]
+PIN_CODE = AUTH_CONFIG["PIN_CODE"]
+SESSION_TIMEOUT_MINUTES = AUTH_CONFIG.get("SESSION_TIMEOUT_MINUTES", 30)
+
+
+# 認証関数
+def check_authentication():
+    """認証チェック関数"""
+    # セッション状態の初期化
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+        st.session_state.auth_time = None
+
+    # セッションタイムアウトチェック
+    if st.session_state.authenticated and st.session_state.auth_time:
+        elapsed_minutes = (time.time() - st.session_state.auth_time) / 60
+        if elapsed_minutes > SESSION_TIMEOUT_MINUTES:
+            st.session_state.authenticated = False
+            st.session_state.auth_time = None
+            st.warning(
+                f"セッションがタイムアウトしました（{SESSION_TIMEOUT_MINUTES}分）"
+            )
+
+    return st.session_state.authenticated
+
+
+def show_login_form():
+    """ログイン画面表示"""
+    st.title("資産管理アプリ")
+    st.markdown("---")
+
+    # PINコード認証のみ
+    st.subheader("PINを入力")
+    pin_input = st.text_input("暗証番号", type="password", placeholder="PINを入力")
+
+    if st.button("ログイン", type="primary"):
+        if pin_input == PIN_CODE:
+            st.session_state.authenticated = True
+            st.session_state.auth_time = time.time()
+            st.success("認証成功！")
+            st.rerun()
+        else:
+            st.error("暗証番号が間違っています")
 
 def get_pokemon(id):
     url = f"https://pokeapi.co/api/v2/pokemon/{id}"
@@ -68,6 +113,10 @@ def save_data(sheet, data):
         [data.columns.values.tolist()] + data.values.tolist()
     )  # ヘッダーとデータを書き込み
 
+# メインアプリ
+if not check_authentication():
+    show_login_form()
+    st.stop()
 
 # アプリのタイトル
 st.title("家計管理アプリ")
