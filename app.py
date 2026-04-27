@@ -148,7 +148,7 @@ except Exception:
 name1 = st.secrets.NAME1
 name2 = st.secrets.NAME2
 
-tabs = st.tabs(["記録", "精算履歴"])
+tabs = st.tabs(["記録", "精算履歴", "支出履歴"])
 
 with tabs[0]:
 
@@ -263,3 +263,8 @@ with tabs[1]:
     pokemon = get_pokemon(pokemon_id)
     # st.write(f"No.{pokemon_id} " + pokemon["name"])
     st.image(pokemon["image"])
+
+with tabs[2]:
+    st.header("支出履歴")
+    data_detail = load_data(detail_sheet)
+    st.dataframe(data_detail)
