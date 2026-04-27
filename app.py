@@ -92,6 +92,16 @@ def get_google_sheet2(sheet_name):
     return sheet
 
 
+def get_google_sheet_by_name(sheet_name, worksheet_name):
+    client = authenticate_google_sheets()
+    spreadsheet = client.open(sheet_name)
+    try:
+        sheet = spreadsheet.worksheet(worksheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        sheet = spreadsheet.add_worksheet(title=worksheet_name, rows=1000, cols=20)
+    return sheet
+
+
 # スプレッドシートからデータ読み込み
 def load_data(sheet):
     records = sheet.get_all_records()  # シート全体を取得
@@ -127,6 +137,7 @@ SHEET_NAME = "kakei_seisan"
 # スプレッドシートへの接続
 sheet = get_google_sheet(SHEET_NAME)
 history_sheet = get_google_sheet2(SHEET_NAME)
+detail_sheet = get_google_sheet_by_name(SHEET_NAME, "支出履歴")
 
 # データ読み込み
 try:
@@ -137,7 +148,7 @@ except Exception:
 name1 = st.secrets.NAME1
 name2 = st.secrets.NAME2
 
-tabs = st.tabs(["記録", "精算履歴"])
+tabs = st.tabs(["記録", "精算履歴", "支出履歴"])
 
 with tabs[0]:
 
@@ -148,7 +159,7 @@ with tabs[0]:
     with col1:
         st.subheader(name1)
         person_1_date = st.date_input(f"日付（{name1}）")
-        person_1_amount = st.number_input(f"金額（{name1}）", min_value=0, step=100)
+        person_1_amount = st.number_input(f"金額（{name1}）", min_value=0, step=100, value=None, placeholder="金額を入力")
         sub_col1, sub_col2 = col1.columns(2)
         person_1_content = sub_col1.radio(f"分類({name1})", ["食費", "その他"])
         person_1_place = sub_col2.text_input(f"場所({name1})")
@@ -167,7 +178,7 @@ with tabs[0]:
     with col2:
         st.subheader(name2)
         person_2_date = st.date_input(f"日付（{name2}）")
-        person_2_amount = st.number_input(f"金額（{name2}）", min_value=0, step=100)
+        person_2_amount = st.number_input(f"金額（{name2}）", min_value=0, step=100, value=None, placeholder="金額を入力")
         sub_col1, sub_col2 = col2.columns(2)
         person_2_content = sub_col1.radio(f"分類({name2})", ["食費", "その他"])
         person_2_place = sub_col2.text_input(f"場所({name2})")
@@ -229,6 +240,15 @@ with tabs[0]:
         )
         save_settlement_history(history_sheet, history_data)
 
+        # 支出リストを支出履歴シートに追記
+        settled_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        detail_data = data.copy()
+        detail_data.insert(0, "精算日", settled_at)
+        existing = detail_sheet.get_all_values()
+        if not existing:
+            detail_sheet.insert_row(detail_data.columns.tolist(), index=1)
+        save_settlement_history(detail_sheet, detail_data)
+
         # データクリア
         data = pd.DataFrame(columns=["Person", "Date", "Amount", "Content", "place"])
         save_data(sheet, data)
@@ -243,3 +263,8 @@ with tabs[1]:
     pokemon = get_pokemon(pokemon_id)
     # st.write(f"No.{pokemon_id} " + pokemon["name"])
     st.image(pokemon["image"])
+
+with tabs[2]:
+    st.header("支出履歴")
+    data_detail = load_data(detail_sheet)
+    st.dataframe(data_detail)
