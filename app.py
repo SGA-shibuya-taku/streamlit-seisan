@@ -241,9 +241,7 @@ with tabs[0]:
         save_settlement_history(history_sheet, history_data)
 
         # 支出リストを支出履歴シートに追記
-        settled_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         detail_data = data.copy()
-        detail_data.insert(0, "精算日", settled_at)
         existing = detail_sheet.get_all_values()
         if not existing:
             detail_sheet.insert_row(detail_data.columns.tolist(), index=1)
